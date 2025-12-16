@@ -3,7 +3,7 @@ import React from 'react'
 const  MainDashboard = () => {
   return (
     <div>
-      main dashboard age
+      main dashboard page
     </div>
   )
 }
