@@ -6,6 +6,8 @@ import SignupPageModel from "../pages/signin-model";
 import MainLayout from "../layout/main-layout";
 import AddCatgory from "../pages/add-category";
 import EditCatgory from "../pages/edit-category";
+import ProductDashboard from "../pages/product";
+import AddProduct from "../pages/addproduct";
 
 const RouterMain = () => {
   return (
@@ -19,6 +21,10 @@ const RouterMain = () => {
         <Route path="/category" element={<Category />} />
         <Route path="/category/add" element={<AddCatgory />} />
         <Route path="/category/edit/:id" element={<EditCatgory />} />
+
+        <Route path="/products" element={<ProductDashboard />} />
+        <Route path="/product/add" element={<AddProduct />} />
+        {/* <Route path="/product/edit/:id" element={<EditProduct />} /> */}
       </Route>
 
       {/* 404 */}
