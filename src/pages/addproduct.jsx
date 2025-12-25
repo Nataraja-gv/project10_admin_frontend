@@ -9,19 +9,32 @@ import {
   MenuItem,
   Stack,
   Chip,
+  Card,
+  CardContent,
+  Divider,
+  Avatar,
+  IconButton,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+import SaveIcon from "@mui/icons-material/Save";
+import CloseIcon from "@mui/icons-material/Close";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
-
+import { useLocation, useNavigate } from "react-router-dom";
 import { allCategory } from "../services/category";
-// import { addProduct } from "../services/product/product";
+import { addProduct, editProduct } from "../services/product/product";
 
 const AddProduct = () => {
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const isEdit = Boolean(state);
 
   const [categories, setCategories] = useState([]);
-  const [images, setImages] = useState([]);
+
+  // 🔥 IMAGE STATES (VERY IMPORTANT)
+  const [existingImages, setExistingImages] = useState([]);
+  const [newImages, setNewImages] = useState([]);
 
   const [form, setForm] = useState({
     product_name: "",
@@ -30,6 +43,7 @@ const AddProduct = () => {
     mrp: "",
     stock: "",
     category: "",
+    status: true,
   });
 
   /* ---------------- FETCH CATEGORY ---------------- */
@@ -41,182 +55,316 @@ const AddProduct = () => {
     fetchCategory();
   }, []);
 
-  /* ---------------- HANDLE CHANGE ---------------- */
+  /* ---------------- EDIT MODE PREFILL ---------------- */
+  useEffect(() => {
+    if (isEdit && state) {
+      setForm({
+        product_name: state.product_name,
+        product_description: state.product_description,
+        product_price: state.product_price,
+        mrp: state.mrp,
+        stock: state.stock,
+        category: state.category?._id,
+        status: state.status,
+      });
+
+      setExistingImages(state.product_images || []);
+    }
+  }, [isEdit, state]);
+
+  /* ---------------- HANDLERS ---------------- */
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  /* ---------------- IMAGE UPLOAD ---------------- */
+  const handleStatusChange = (e) => {
+    setForm((prev) => ({
+      ...prev,
+      status: e.target.checked,
+    }));
+  };
+
+  // ✅ FIXED IMAGE ADD (APPEND)
   const handleImageChange = (e) => {
-    setImages([...e.target.files]);
+    const files = Array.from(e.target.files);
+
+    setNewImages((prev) => {
+      if (prev.length + files.length > 5) {
+        toast.error("Maximum 5 images allowed");
+        return prev;
+      }
+      return [...prev, ...files];
+    });
+
+    // 🔑 important to avoid clearing bug
+    e.target.value = null;
+  };
+
+  const removeNewImage = (index) => {
+    setNewImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (index) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   /* ---------------- SUBMIT ---------------- */
   const handleSubmit = async () => {
-    if (Number(form.product_price) > Number(form.mrp)) {
-      return toast.error("Product price must be less than MRP");
+    const requiredFields = {
+      product_name: "Product name",
+      product_description: "Description",
+      product_price: "Selling price",
+      mrp: "MRP",
+      stock: "Stock",
+      category: "Category",
+    };
+
+    for (const key in requiredFields) {
+      if (!form[key]) {
+        return toast.error(`${requiredFields[key]} is required`);
+      }
     }
 
-    if (images.length === 0) {
+    if (Number(form.product_price) > Number(form.mrp)) {
+      return toast.error("Selling price must be less than MRP");
+    }
+
+    if (!isEdit && newImages.length === 0) {
+      return toast.error("Upload at least one image");
+    }
+
+    if (isEdit && newImages.length === 0 && existingImages.length === 0) {
       return toast.error("At least one image is required");
     }
 
     const formData = new FormData();
-    Object.keys(form).forEach((key) => {
-      formData.append(key, form[key]);
-    });
 
-    images.forEach((img) => {
-      formData.append("product_images", img);
-    });
+    Object.keys(form).forEach((key) => formData.append(key, form[key]));
 
-    try {
-    //   await addProduct(formData);
-      toast.success("Product added successfully");
-      navigate("/product");
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Add failed");
+    if (newImages.length > 0) {
+      newImages.forEach((file) => {
+        formData.append("product_images", file);
+      });
     }
+
+    if (
+      existingImages?.map((img) =>
+        formData.append("product_images", img.image_link)
+      )
+    )
+      try {
+        if (isEdit) {
+          await editProduct(formData, state._id);
+          toast.success("Product updated successfully");
+        } else {
+          await addProduct(formData);
+          toast.success("Product added successfully");
+        }
+        navigate("/products");
+      } catch (err) {
+        toast.error(err?.response?.data?.message || "Failed");
+      }
   };
 
-  /* ---------------- DISCOUNT ---------------- */
   const discount =
     form.mrp && form.product_price
-      ? Math.round(
-          ((form.mrp - form.product_price) / form.mrp) * 100
-        )
+      ? Math.round(((form.mrp - form.product_price) / form.mrp) * 100)
       : 0;
 
+  /* ---------------- UI ---------------- */
   return (
-    <Box p={3}>
-      <Paper sx={{ p: 4, borderRadius: 3 }}>
-        <Typography variant="h6" fontWeight={600} mb={3}>
-          Add New Product
-        </Typography>
+    <Box p={4} bgcolor="#f4f6f8" minHeight="100vh">
+      <Typography variant="h4" fontWeight={700} mb={3}>
+        {isEdit ? "Edit Product" : "Add Product"}
+      </Typography>
 
-        <Grid container spacing={3}>
-          {/* PRODUCT NAME */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Product Name"
-              name="product_name"
-              value={form.product_name}
-              onChange={handleChange}
-            />
-          </Grid>
+      <Grid container spacing={3}>
+        {/* LEFT */}
+        <Grid item xs={12} md={7}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Stack spacing={2}>
+                <TextField
+                  label="Product Name"
+                  name="product_name"
+                  value={form.product_name}
+                  onChange={handleChange}
+                />
 
-          {/* CATEGORY */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              select
-              fullWidth
-              label="Category"
-              name="category"
-              value={form.category}
-              onChange={handleChange}
-            >
-              {categories.map((cat) => (
-                <MenuItem key={cat._id} value={cat._id}>
-                  {cat.category_name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
+                <TextField
+                  select
+                  label="Category"
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                >
+                  {categories.map((cat) => (
+                    <MenuItem key={cat._id} value={cat._id}>
+                      {cat.category_name}
+                    </MenuItem>
+                  ))}
+                </TextField>
 
-          {/* DESCRIPTION */}
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Product Description"
-              name="product_description"
-              value={form.product_description}
-              onChange={handleChange}
-            />
-          </Grid>
+                <TextField
+                  label="Description"
+                  multiline
+                  rows={4}
+                  name="product_description"
+                  value={form.product_description}
+                  onChange={handleChange}
+                />
 
-          {/* PRICE */}
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Product Price"
-              name="product_price"
-              value={form.product_price}
-              onChange={handleChange}
-            />
-          </Grid>
+                <Grid container spacing={2}>
+                  <Grid item xs={4}>
+                    <TextField
+                      label="Selling Price"
+                      type="number"
+                      name="product_price"
+                      value={form.product_price}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                  <Grid item xs={4}>
+                    <TextField
+                      label="MRP"
+                      type="number"
+                      name="mrp"
+                      value={form.mrp}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                  <Grid item xs={4}>
+                    <TextField
+                      label="Stock"
+                      type="number"
+                      name="stock"
+                      value={form.stock}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                </Grid>
 
-          {/* MRP */}
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              type="number"
-              label="MRP"
-              name="mrp"
-              value={form.mrp}
-              onChange={handleChange}
-            />
-          </Grid>
-
-          {/* STOCK */}
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Stock"
-              name="stock"
-              value={form.stock}
-              onChange={handleChange}
-            />
-          </Grid>
-
-          {/* DISCOUNT */}
-          {discount > 0 && (
-            <Grid item xs={12}>
-              <Chip
-                color="success"
-                label={`Discount: ${discount}%`}
-              />
-            </Grid>
-          )}
-
-          {/* IMAGE UPLOAD */}
-          <Grid item xs={12}>
-            <Button
-              component="label"
-              variant="outlined"
-              startIcon={<CloudUploadIcon />}
-            >
-              Upload Product Images
-              <input
-                hidden
-                multiple
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-              />
-            </Button>
-
-            {images.length > 0 && (
-              <Typography mt={1} variant="body2">
-                {images.length} image(s) selected
-              </Typography>
-            )}
-          </Grid>
+                {discount > 0 && (
+                  <Chip label={`Discount ${discount}%`} color="success" />
+                )}
+                <FormControlLabel
+                  sx={{ mt: 4 }}
+                  control={
+                    <Switch
+                      checked={form.status}
+                      onChange={handleStatusChange}
+                    />
+                  }
+                  label={form.status ? "Active" : "Inactive"}
+                />
+              </Stack>
+            </CardContent>
+          </Card>
         </Grid>
 
-        {/* ACTION BUTTONS */}
-        <Stack direction="row" spacing={2} mt={4}>
-          <Button variant="contained" onClick={handleSubmit}>
-            Save Product
-          </Button>
-          <Button variant="outlined" onClick={() => navigate("/product")}>
-            Cancel
-          </Button>
-        </Stack>
+        {/* RIGHT */}
+        <Grid item xs={12} md={5}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Typography fontWeight={600}>Product Images</Typography>
+
+              <Box
+                component="label"
+                sx={{
+                  border: "2px dashed #ccc",
+                  p: 3,
+                  borderRadius: 2,
+                  textAlign: "center",
+                  cursor: "pointer",
+                  mt: 2,
+                }}
+              >
+                <CloudUploadOutlinedIcon fontSize="large" />
+                <Typography>Click to upload</Typography>
+                <input
+                  hidden
+                  multiple
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                />
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Grid container spacing={2}>
+                {existingImages.map((img, i) => (
+                  <Grid item xs={4} key={`old-${i}`}>
+                    <Box position="relative">
+                      <Avatar
+                        src={img.image_link}
+                        variant="rounded"
+                        sx={{ width: "100%", height: 100 }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => removeExistingImage(i)}
+                        sx={{
+                          position: "absolute",
+                          top: -8,
+                          right: -8,
+                          bgcolor: "white",
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Grid>
+                ))}
+
+                {newImages.map((img, i) => (
+                  <Grid item xs={4} key={`new-${i}`}>
+                    <Box position="relative">
+                      <Avatar
+                        src={URL.createObjectURL(img)}
+                        variant="rounded"
+                        sx={{ width: "100%", height: 100 }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => removeNewImage(i)}
+                        sx={{
+                          position: "absolute",
+                          top: -8,
+                          right: -8,
+                          bgcolor: "white",
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* STATUS */}
+
+      {/* ACTION BAR */}
+      <Paper
+        sx={{
+          mt: 4,
+          p: 2,
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 2,
+          borderRadius: 3,
+        }}
+      >
+        <Button variant="outlined" onClick={() => navigate("/products")}>
+          Cancel
+        </Button>
+        <Button variant="contained" onClick={handleSubmit}>
+          {isEdit ? "Update Product" : "Save Product"}
+        </Button>
       </Paper>
     </Box>
   );

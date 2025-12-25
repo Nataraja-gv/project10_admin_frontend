@@ -7,7 +7,7 @@ import MainLayout from "../layout/main-layout";
 import AddCatgory from "../pages/add-category";
 import EditCatgory from "../pages/edit-category";
 import ProductDashboard from "../pages/product";
-import AddProduct from "../pages/addproduct";
+import AddEditProduct from "../pages/addproduct";
 
 const RouterMain = () => {
   return (
@@ -23,8 +23,8 @@ const RouterMain = () => {
         <Route path="/category/edit/:id" element={<EditCatgory />} />
 
         <Route path="/products" element={<ProductDashboard />} />
-        <Route path="/product/add" element={<AddProduct />} />
-        {/* <Route path="/product/edit/:id" element={<EditProduct />} /> */}
+        <Route path="/product/add" element={<AddEditProduct />} />
+        <Route path="/product/edit/:_id" element={<AddEditProduct />} />
       </Route>
 
       {/* 404 */}
