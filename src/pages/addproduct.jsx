@@ -154,13 +154,18 @@ const AddProduct = () => {
     )
       try {
         if (isEdit) {
-          await editProduct(formData, state._id);
-          toast.success("Product updated successfully");
+          const res = await editProduct(formData, state._id);
+          if (res) {
+            toast.success("Product updated successfully");
+            navigate("/products");
+          }
         } else {
-          await addProduct(formData);
-          toast.success("Product added successfully");
+          const res = await addProduct(formData);
+          if (res) {
+            toast.success("Product added successfully");
+            navigate("/products");
+          }
         }
-        navigate("/products");
       } catch (err) {
         toast.error(err?.response?.data?.message || "Failed");
       }
