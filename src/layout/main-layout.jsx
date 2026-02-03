@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Box } from "@mui/material";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import Navbar from "./Navbar";
+import Navbar from "./navbar";
 import { AuthProfile } from "../services/profile";
 import { setIsAuthenticated, setUser } from "../feature/user-slice";
 
