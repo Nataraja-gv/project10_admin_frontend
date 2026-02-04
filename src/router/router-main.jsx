@@ -8,6 +8,7 @@ import AddCatgory from "../pages/add-category";
 import EditCatgory from "../pages/edit-category";
 import ProductDashboard from "../pages/product";
 import AddEditProduct from "../pages/addproduct";
+import OrderPageList from "../pages/orders/order-pagelist";
 
 const RouterMain = () => {
   return (
@@ -25,6 +26,9 @@ const RouterMain = () => {
         <Route path="/products" element={<ProductDashboard />} />
         <Route path="/product/add" element={<AddEditProduct />} />
         <Route path="/product/edit/:_id" element={<AddEditProduct />} />
+
+        <Route path="/orders" element={<OrderPageList />} />
+
       </Route>
 
       {/* 404 */}
